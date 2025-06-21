@@ -7,6 +7,7 @@ use Cake\ORM\Query;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
+use Cake\Auth\DefaultPasswordHasher;
 
 /**
  * Users Model
@@ -29,6 +30,13 @@ use Cake\Validation\Validator;
  */
 class UsersTable extends Table
 {
+    public function beforeSave($event, $entity, $options)
+    {
+        if ($entity->isNew() && $entity->get('password')) {
+            $entity->set('password', (new DefaultPasswordHasher)->hash($entity->get('password')));
+        }
+        return true;
+    }
     /**
      * Initialize method
      *
