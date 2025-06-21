@@ -16,6 +16,7 @@ declare(strict_types=1);
  */
 namespace App;
 
+
 use Cake\Core\Configure;
 use Cake\Core\ContainerInterface;
 use Cake\Datasource\FactoryLocator;
