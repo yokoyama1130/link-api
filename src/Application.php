@@ -28,6 +28,13 @@ use Cake\Http\MiddlewareQueue;
 use Cake\ORM\Locator\TableLocator;
 use Cake\Routing\Middleware\AssetMiddleware;
 use Cake\Routing\Middleware\RoutingMiddleware;
+use Authentication\Middleware\AuthenticationMiddleware;
+
+use Authentication\AuthenticationServiceProviderInterface;
+use Cake\Routing\Router;
+use Authentication\AuthenticationService;
+use Authentication\AuthenticationServiceInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * Application setup class.
@@ -35,7 +42,8 @@ use Cake\Routing\Middleware\RoutingMiddleware;
  * This defines the bootstrapping logic and middleware layers you
  * want to use in your application.
  */
-class Application extends BaseApplication
+// class Application extends BaseApplication
+class Application extends BaseApplication implements AuthenticationServiceProviderInterface
 {
     /**
      * Load all the application configuration and bootstrap logic.
@@ -46,6 +54,9 @@ class Application extends BaseApplication
     {
         // Call parent to load bootstrap from files.
         parent::bootstrap();
+
+        // 👇 プラグインの読み込み（ここに移動）
+        $this->addPlugin('Authentication');
 
         if (PHP_SAPI === 'cli') {
             $this->bootstrapCli();
@@ -67,6 +78,25 @@ class Application extends BaseApplication
         // Load more plugins here
     }
 
+    public function getAuthenticationService(ServerRequestInterface $request): AuthenticationServiceInterface
+    {
+        $service = new AuthenticationService();
+
+        // Identifier（JWTのsub → user_idに対応）
+        $service->loadIdentifier('Authentication.JwtSubject');
+
+        // Authenticator（JWTトークンの検証）
+        $service->loadAuthenticator('Authentication.Jwt', [
+            'secretKey' => Configure::read('Security.jwtSecret'),
+            'header' => 'authorization',
+            'tokenPrefix' => 'Bearer',
+            'algorithms' => ['HS256'],
+        ]);
+
+        return $service;
+    }
+
+
     /**
      * Setup the middleware queue your application will use.
      *
@@ -85,6 +115,7 @@ class Application extends BaseApplication
                 'cacheTime' => Configure::read('Asset.cacheTime'),
             ]))
             ->add(new RoutingMiddleware($this))
+            ->add(new AuthenticationMiddleware($this))
             ->add(new BodyParserMiddleware())
             // ✅ /api/ はCSRFチェックをスキップ、それ以外は有効
             ->add(function ($request, $handler) use ($csrf) {

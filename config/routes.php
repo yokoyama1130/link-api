@@ -19,6 +19,10 @@ return function (RouteBuilder $routes): void {
         // LoginControllerへのルート
         $builder->connect('/login', ['controller' => 'Login', 'action' => 'index']);
 
+        $builder->connect('/me', ['controller' => 'Me', 'action' => 'index']);
+
+        $builder->resources('Posts');
+
         // ✅ これを追加することで UsersController がREST対応になる！
         $builder->resources('Users');
 

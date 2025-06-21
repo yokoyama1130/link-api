@@ -3,7 +3,8 @@ namespace App\Controller\Api;
 
 use App\Controller\AppController;
 use Cake\Auth\DefaultPasswordHasher;
-use Cake\ORM\TableRegistry;
+use Firebase\JWT\JWT;
+use Cake\Core\Configure;
 
 class LoginController extends AppController
 {
@@ -23,21 +24,31 @@ class LoginController extends AppController
         $user = $this->Users->findByEmail($data['email'])->first();
 
         if ($user && (new DefaultPasswordHasher)->check($data['password'], $user->password)) {
+            // ✅ JWT トークンを発行
+            $payload = [
+                'sub' => $user->id,
+                'exp' => time() + 604800, // 1週間
+            ];
+            $jwt = JWT::encode($payload, Configure::read('Security.jwtSecret'), 'HS256');
+
             $this->set([
                 'success' => true,
                 'data' => [
                     'id' => $user->id,
                     'name' => $user->name,
-                    'email' => $user->email
+                    'email' => $user->email,
+                    'token' => $jwt
                 ],
                 '_serialize' => ['success', 'data']
             ]);
-        } else {
-            $this->set([
-                'success' => false,
-                'message' => 'Invalid email or password',
-                '_serialize' => ['success', 'message']
-            ]);
+            return;
         }
+
+        $this->set([
+            'success' => false,
+            'message' => 'Invalid email or password',
+            '_serialize' => ['success', 'message']
+        ]);
+        return;
     }
 }
