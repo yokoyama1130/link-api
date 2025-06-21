@@ -5,6 +5,8 @@ namespace App\Controller\Api;
 use App\Controller\AppController;
 use Cake\Http\Exception\UnauthorizedException;
 use Cake\Log\Log;
+use Cake\Filesystem\File;
+use Cake\Utility\Text;
 
 class PostsController extends AppController
 {
@@ -29,34 +31,30 @@ class PostsController extends AppController
     public function add()
     {
         $this->request->allowMethod(['post']);
-    
-        // ログインユーザーの確認
         $user = $this->Authentication->getIdentity();
-        if (!$user) {
-            throw new \Cake\Http\Exception\UnauthorizedException('ログインしてください');
-        }
     
-        \Cake\Log\Log::debug('ログインユーザー: ' . print_r($user, true));
+        if (!$user) {
+            throw new UnauthorizedException('ログインしてください');
+        }
     
         $data = $this->request->getData();
         $data['user_id'] = $user->get('sub');
     
-        $post = $this->Posts->newEntity($data);
+        if (!empty($this->request->getData('media'))) {
+            $media = $this->request->getData('media');
+            $filename = Text::uuid() . '_' . $media->getClientFilename();
+            $media->moveTo(WWW_ROOT . 'uploads' . DS . $filename);
+            $data['media_path'] = $filename;
+        }
     
+        $post = $this->Posts->newEntity($data);
         if ($this->Posts->save($post)) {
-            $this->set([
-                'success' => true,
-                'post' => $post,
-                '_serialize' => ['success', 'post']
-            ]);
+            $this->set(['success' => true, 'post' => $post, '_serialize' => ['success', 'post']]);
         } else {
-            $this->set([
-                'success' => false,
-                'errors' => $post->getErrors(),
-                '_serialize' => ['success', 'errors']
-            ]);
+            $this->set(['success' => false, 'errors' => $post->getErrors(), '_serialize' => ['success', 'errors']]);
         }
     }
+    
     
 }
 
