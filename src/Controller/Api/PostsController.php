@@ -31,8 +31,8 @@ class PostsController extends AppController
     public function add()
     {
         $this->request->allowMethod(['post']);
-        $user = $this->Authentication->getIdentity();
     
+        $user = $this->Authentication->getIdentity();
         if (!$user) {
             throw new UnauthorizedException('ログインしてください');
         }
@@ -40,21 +40,30 @@ class PostsController extends AppController
         $data = $this->request->getData();
         $data['user_id'] = $user->get('sub');
     
-        if (!empty($this->request->getData('media'))) {
-            $media = $this->request->getData('media');
-            $filename = Text::uuid() . '_' . $media->getClientFilename();
-            $media->moveTo(WWW_ROOT . 'uploads' . DS . $filename);
-            $data['media_path'] = $filename;
+        $post = $this->Posts->newEntity($data);
+    
+        // 画像ファイルがあれば保存
+        if (!empty($data['media']) && $data['media']->getError() === UPLOAD_ERR_OK) {
+            $file = $data['media'];
+            $filename = uniqid() . '_' . $file->getClientFilename();
+            $file->moveTo(WWW_ROOT . 'uploads' . DS . $filename);
+            $post->media_path = '/uploads/' . $filename;
         }
     
-        $post = $this->Posts->newEntity($data);
         if ($this->Posts->save($post)) {
-            $this->set(['success' => true, 'post' => $post, '_serialize' => ['success', 'post']]);
+            $this->set([
+                'success' => true,
+                'post' => $post,
+                '_serialize' => ['success', 'post']
+            ]);
         } else {
-            $this->set(['success' => false, 'errors' => $post->getErrors(), '_serialize' => ['success', 'errors']]);
+            $this->set([
+                'success' => false,
+                'errors' => $post->getErrors(),
+                '_serialize' => ['success', 'errors']
+            ]);
         }
     }
-    
     
 }
 
